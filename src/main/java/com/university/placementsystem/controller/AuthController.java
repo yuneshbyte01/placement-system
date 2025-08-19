@@ -78,7 +78,7 @@ public class AuthController {
         var user = userOpt.get();
 
         // Generate JWT token
-        String token = jwtUtil.generateToken(user.getEmail(), user.getRole());
+        String token = jwtUtil.generateToken(user.getEmail(), user.getRole(), user.getUsername());
 
         // Prepare response
         response.put("token", token);

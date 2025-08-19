@@ -21,15 +21,17 @@ public class JwtUtil {
     private final long EXPIRATION_TIME = 1000 * 60 * 60 * 24; // 24 hours
 
     /**
-     * Generate a JWT token for the given email and role.
+     * Generate a JWT token with email, role, and username (optional).
      *
      * @param email user email
      * @param role  user role
+     * @param name  username
      * @return JWT token as a string
      */
-    public String generateToken(String email, UserRole role) {
+    public String generateToken(String email, UserRole role, String name) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", role.name());
+        claims.put("name", name);
 
         return Jwts.builder()
                 .setClaims(claims)
@@ -38,5 +40,41 @@ public class JwtUtil {
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
                 .signWith(key)
                 .compact();
+    }
+
+    /**
+     * Extract the username (email) from the JWT token.
+     */
+    public String extractUsername(String token) {
+        return (String) Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getSubject();
+    }
+
+    /**
+     * Extract the role from the JWT token.
+     */
+    public String extractRole(String token) {
+        return (String) Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .get("role");
+    }
+
+    /**
+     * Extract the name from the JWT token.
+     */
+    public String extractName(String token) {
+        return (String) Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .get("name");
     }
 }
