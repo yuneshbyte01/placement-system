@@ -45,4 +45,19 @@ public class AdminController {
                 "userId", user.getId()
         ));
     }
+
+    /** Activate a user */
+    @PutMapping("/users/{id}/activate")
+    public ResponseEntity<?> activateUser(@PathVariable Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        user.setActive(true);
+        userRepository.save(user);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "User activated",
+                "userId", user.getId()
+        ));
+    }
 }
