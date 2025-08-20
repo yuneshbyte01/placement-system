@@ -1,6 +1,9 @@
 package com.university.placementsystem.controller;
 
+import com.university.placementsystem.dto.OrganizationDTO;
+import com.university.placementsystem.entity.Organization;
 import com.university.placementsystem.entity.User;
+import com.university.placementsystem.repository.OrganizationRepository;
 import com.university.placementsystem.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -8,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -15,8 +19,9 @@ import java.util.Map;
 public class AdminController {
 
     private final UserRepository userRepository;
+    private final OrganizationRepository organizationRepository;
 
-    /** Test endpoint */
+    /** --- Test endpoint --- */
     @GetMapping("/test")
     public ResponseEntity<?> testAdmin() {
         return ResponseEntity.ok(Map.of(
@@ -25,13 +30,13 @@ public class AdminController {
         ));
     }
 
-    /** List all users */
+    /** --- List all users --- */
     @GetMapping("/users")
     public ResponseEntity<List<User>> getAllUsers() {
         return ResponseEntity.ok(userRepository.findAll());
     }
 
-    /** Deactivate a user */
+    /** --- Deactivate a user --- */
     @PutMapping("/users/{id}/deactivate")
     public ResponseEntity<?> deactivateUser(@PathVariable Long id) {
         User user = userRepository.findById(id)
@@ -46,7 +51,7 @@ public class AdminController {
         ));
     }
 
-    /** Activate a user */
+    /** --- Activate a user --- */
     @PutMapping("/users/{id}/activate")
     public ResponseEntity<?> activateUser(@PathVariable Long id) {
         User user = userRepository.findById(id)
@@ -59,5 +64,62 @@ public class AdminController {
                 "message", "User activated",
                 "userId", user.getId()
         ));
+    }
+
+    /** --- List all organizations --- */
+    @GetMapping("/organizations")
+    public ResponseEntity<List<OrganizationDTO>> getAllOrganizations() {
+        List<OrganizationDTO> orgs = organizationRepository.findAll()
+                .stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(orgs);
+    }
+
+    /** --- List of pending organizations --- */
+    @GetMapping("/organizations/pending")
+    public ResponseEntity<List<OrganizationDTO>> getPendingOrganizations() {
+        List<OrganizationDTO> pendingOrgs = organizationRepository.findByApprovedFalse()
+                .stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(pendingOrgs);
+    }
+
+    /** --- Approve an organization --- */
+    @PutMapping("/organizations/{id}/approve")
+    public ResponseEntity<?> approveOrganization(@PathVariable Long id) {
+        return organizationRepository.findById(id)
+                .map(org -> {
+                    org.setApproved(true);
+                    organizationRepository.save(org);
+                    return ResponseEntity.ok(Map.of("message", "Organization approved successfully"));
+                })
+                .orElseGet(() -> ResponseEntity.status(404).body(Map.of("message", "Organization not found")));
+    }
+
+    /** --- Reject an organization --- */
+    @PutMapping("/organizations/{id}/reject")
+    public ResponseEntity<?> rejectOrganization(@PathVariable Long id) {
+        return organizationRepository.findById(id)
+                .map(org -> {
+                    organizationRepository.delete(org);
+                    return ResponseEntity.ok(Map.of("message", "Organization rejected and removed"));
+                })
+                .orElseGet(() -> ResponseEntity.status(404).body(Map.of("message", "Organization not found")));
+    }
+
+    // ------------------- Private Helper -------------------
+
+    /** Convert Organization entity to DTO */
+    private OrganizationDTO mapToDTO(Organization org) {
+        return new OrganizationDTO(
+                org.getCompanyName(),
+                org.getIndustry(),
+                org.getLocation(),
+                org.getDescription(),
+                org.isApproved(),
+                org.getUser().getEmail()
+        );
     }
 }

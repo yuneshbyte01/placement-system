@@ -16,5 +16,6 @@ public class OrganizationDTO {
     private String industry;
     private String location;
     private String description;
-    private String email; // associated user's email
+    private boolean approved;
+    private String email;
 }

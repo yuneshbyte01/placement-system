@@ -56,6 +56,7 @@ public class OrganizationController {
                 .industry(request.getIndustry())
                 .location(request.getLocation())
                 .description(request.getDescription())
+                .approved(false)
                 .build();
 
         organizationRepository.save(organization);
@@ -73,6 +74,7 @@ public class OrganizationController {
                         org.getIndustry(),
                         org.getLocation(),
                         org.getDescription(),
+                        org.isApproved(),
                         org.getUser().getEmail()
                 ))
                 .map(ResponseEntity::ok)
@@ -113,13 +115,19 @@ public class OrganizationController {
         Optional<Organization> orgOpt = getOrganization(authentication);
         if (orgOpt.isEmpty()) return notFoundResponse();
 
+        Organization org = orgOpt.get();
+        if (!org.isApproved()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Organization not approved by Admin. Cannot post jobs."));
+        }
+
         JobPosting job = JobPosting.builder()
                 .title(request.getTitle())
                 .description(request.getDescription())
                 .skillsRequired(request.getSkillsRequired())
                 .eligibilityCriteria(request.getEligibilityCriteria())
-                .organization(orgOpt.get())
-                .build(); // createdAt handled in entity via @PrePersist
+                .organization(org)
+                .build();
 
         jobPostingRepository.save(job);
 

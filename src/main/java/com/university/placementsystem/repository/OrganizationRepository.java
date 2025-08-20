@@ -3,6 +3,7 @@ package com.university.placementsystem.repository;
 import com.university.placementsystem.entity.Organization;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -28,4 +29,6 @@ public interface OrganizationRepository extends JpaRepository<Organization, Long
      * @return Optional containing the Organization if found, empty otherwise
      */
     Optional<Organization> findByUserEmail(String email);
+
+    List<Organization> findByApprovedFalse();
 }

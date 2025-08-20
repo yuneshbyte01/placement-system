@@ -48,4 +48,8 @@ public class Organization {
     /** Description (optional). */
     @Column(length = 500)
     private String description;
+
+    /** Admin Approval */
+    @Column(nullable = false)
+    private boolean approved = false;
 }
