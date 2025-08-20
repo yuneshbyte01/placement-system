@@ -11,14 +11,19 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
 
 /**
- * Filter to validate JWT token for incoming requests.
- * Uses claims from JWT instead of querying DB.
+ * JWT Authentication Filter.
+ * <p>
+ * Executes once per request to:
+ * - Validate JWT tokens from the Authorization header
+ * - Extract user details and role
+ * - Set an authenticated {@link UserDTO} in the Spring SecurityContext
  */
 @Component
 @RequiredArgsConstructor
@@ -31,36 +36,39 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
-        String authHeader = request.getHeader("Authorization");
+        final String authHeader = request.getHeader("Authorization");
 
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
+        // Process only if a Bearer token is present
+        if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
+            final String token = authHeader.substring(7);
 
             try {
-                String email = jwtUtil.extractUsername(token);
-                String roleStr = jwtUtil.extractRole(token);
-                String name = jwtUtil.extractName(token);
+                final Long id = Long.parseLong(jwtUtil.extractId(token));
+                final String email = jwtUtil.extractUsername(token);
+                final String roleStr = jwtUtil.extractRole(token);
+                final String name = jwtUtil.extractName(token);
 
+                // Set authentication only if not already done
                 if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    UserRole role = UserRole.valueOf(roleStr);
+                    final UserRole role = UserRole.valueOf(roleStr.toUpperCase());
+                    final UserDTO userDto = new UserDTO(id, name, email, role);
 
-                    UserDTO userDTO = new UserDTO(name, email, role);
-
-                    UsernamePasswordAuthenticationToken authentication =
+                    final UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(
-                                    userDTO, // store lightweight UserDTO
+                                    userDto,
                                     null,
-                                    List.of(new SimpleGrantedAuthority("ROLE_" + role.name()))
+                                    List.of(new SimpleGrantedAuthority(role.asAuthority()))
                             );
 
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
 
-            } catch (Exception e) {
-                logger.warn("Invalid JWT token: " + e.getMessage());
+            } catch (Exception ex) {
+                logger.warn("Invalid JWT token: {}");
             }
         }
 
+        // Continue the filter chain
         filterChain.doFilter(request, response);
     }
 }

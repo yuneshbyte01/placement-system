@@ -6,41 +6,40 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 /**
- * Represents a User entity in the Placement System.
- * This entity maps to the "users" table in the database.
- *
+ * Represents a user in the Placement System.
+ * <p>
  * Features:
  * - Uses JPA annotations for persistence.
  * - Includes validation constraints for input fields.
  * - Lombok annotations reduce boilerplate code.
+ * - Maps to the "users" table (instead of "user", which is reserved in MySQL).
  */
 @Entity
+@Table(name = "users")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Table(name = "users") // "user" is reserved in MySQL, so we use "users"
 public class User {
 
-    /** Primary key, auto-generated (identity strategy for MySQL). */
+    /** Primary key, auto-generated (IDENTITY strategy for MySQL). */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     /** User's display name (cannot be blank). */
     @NotBlank(message = "Username cannot be blank")
+    @Column(nullable = false, length = 100)
     private String username;
 
     /** Encrypted password (cannot be blank). */
     @NotBlank(message = "Password cannot be blank")
+    @Column(nullable = false)
     private String password;
 
-    /**
-     * Role of the user in the system.
-     * Stored as a String (e.g., STUDENT, ORG, ADMIN).
-     */
+    /** Role of the user in the system (e.g., STUDENT, ORG, ADMIN). */
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 20)
     private UserRole role;
 
     /**
@@ -51,6 +50,14 @@ public class User {
      */
     @NotBlank(message = "Email cannot be blank")
     @Email(message = "Email is not valid")
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = 150)
     private String email;
+
+    /**
+     * Constructor for referencing a user by ID only.
+     * Useful when setting relationships without fetching the full entity.
+     */
+    public User(Long id) {
+        this.id = id;
+    }
 }

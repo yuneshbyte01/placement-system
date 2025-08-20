@@ -13,7 +13,11 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
- * Spring Security configuration with JWT filter and role-based access.
+ * Spring Security configuration for the Placement System.
+ * <p>
+ * - Configures JWT authentication
+ * - Role-based access control
+ * - Password hashing
  */
 @Configuration
 @RequiredArgsConstructor

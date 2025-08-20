@@ -6,18 +6,21 @@ import com.university.placementsystem.entity.User;
 import com.university.placementsystem.entity.UserRole;
 import com.university.placementsystem.repository.UserRepository;
 import com.university.placementsystem.security.JwtUtil;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
- * Controller for Authentication: Register and Login endpoints.
+ * Authentication Controller.
+ * <p>
+ * Provides endpoints for:
+ * - Registering new users
+ * - Logging in users and returning JWT tokens
  */
 @RestController
 @RequestMapping("/api/auth")
@@ -25,66 +28,73 @@ import java.util.Map;
 public class AuthController {
 
     private final UserRepository userRepository;
-    private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil;
+
+    // --- Response Messages ---
+    private static final String MSG_EMAIL_USED = "Email already in use";
+    private static final String MSG_REGISTER_SUCCESS = "Registered successfully";
+    private static final String MSG_INVALID_CREDENTIALS = "Invalid credentials";
 
     /**
      * Register a new user.
+     * <p>
+     * If the email is already taken, returns HTTP 400.
+     * Otherwise, saves the user with an encoded password and role.
      *
-     * @param request registration DTO
-     * @return success or error message
+     * @param registerRequest request body containing user registration data
+     * @return ResponseEntity with status and message
      */
     @PostMapping("/register")
-    public ResponseEntity<?> registerUser(@Valid @RequestBody RegisterRequest request) {
-        Map<String, String> response = new HashMap<>();
-
-        // Check if email already exists
-        if (userRepository.existsByEmail(request.getEmail())) {
-            response.put("message", "Error: Email is already in use!");
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    public ResponseEntity<?> register(@RequestBody RegisterRequest registerRequest) {
+        if (userRepository.existsByEmail(registerRequest.getEmail())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", MSG_EMAIL_USED));
         }
 
-        // Build new user and save
         User user = User.builder()
-                .username(request.getName())
-                .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .role(UserRole.valueOf(request.getRole().toUpperCase()))
+                .username(registerRequest.getName())
+                .email(registerRequest.getEmail())
+                .password(passwordEncoder.encode(registerRequest.getPassword()))
+                .role(UserRole.valueOf(registerRequest.getRole().toUpperCase()))
                 .build();
 
         userRepository.save(user);
 
-        response.put("message", "User registered successfully!");
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(Map.of("message", MSG_REGISTER_SUCCESS));
     }
 
     /**
-     * Login a user and generate JWT token.
+     * Authenticate user and return JWT token.
+     * <p>
+     * If credentials are invalid, returns HTTP 401.
      *
-     * @param request login DTO
-     * @return JWT token with user info or error
+     * @param loginRequest request body containing email and password
+     * @return ResponseEntity with JWT token and user details
      */
     @PostMapping("/login")
-    public ResponseEntity<?> loginUser(@Valid @RequestBody LoginRequest request) {
-        Map<String, Object> response = new HashMap<>();
+    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
+        Optional<User> userOpt = userRepository.findByEmail(loginRequest.getEmail());
 
-        // Find the user by email
-        var userOpt = userRepository.findByEmail(request.getEmail());
-        if (userOpt.isEmpty() || !passwordEncoder.matches(request.getPassword(), userOpt.get().getPassword())) {
-            response.put("message", "Invalid email or password");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+        if (userOpt.isEmpty() ||
+                !passwordEncoder.matches(loginRequest.getPassword(), userOpt.get().getPassword())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", MSG_INVALID_CREDENTIALS));
         }
 
-        var user = userOpt.get();
+        User user = userOpt.get();
+        String token = jwtUtil.generateToken(
+                String.valueOf(user.getId()),
+                user.getEmail(),
+                user.getRole(),
+                user.getUsername()
+        );
 
-        // Generate JWT token
-        String token = jwtUtil.generateToken(user.getEmail(), user.getRole(), user.getUsername());
-
-        // Prepare response
-        response.put("token", token);
-        response.put("email", user.getEmail());
-        response.put("role", user.getRole().name());
-
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(Map.of(
+                "token", token,
+                "email", user.getEmail(),
+                "role", user.getRole().name()
+        ));
     }
 }
