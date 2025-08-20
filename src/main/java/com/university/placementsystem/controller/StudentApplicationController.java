@@ -1,5 +1,6 @@
 package com.university.placementsystem.controller;
 
+import com.university.placementsystem.dto.ApplicationResponse;
 import com.university.placementsystem.dto.UserDTO;
 import com.university.placementsystem.dto.StudentApplicationDTO;
 import com.university.placementsystem.entity.*;
@@ -81,19 +82,17 @@ public class StudentApplicationController {
         checkStudentRole(authentication);
         Student student = getStudentOrThrow(authentication);
 
-        List<StudentApplicationDTO> applications = applicationRepository
+        List<ApplicationResponse> applications = applicationRepository
                 .findByStudent_Id(student.getId())
                 .stream()
-                .map(app -> new StudentApplicationDTO(
-                        app.getId(),
+                .map(app -> new ApplicationResponse(
+                        app.getJobPosting().getId(),
                         app.getJobPosting().getTitle(),
-                        app.getJobPosting().getDescription(),
-                        app.getJobPosting().getSkillsRequired(),
-                        app.getJobPosting().getEligibilityCriteria(),
+                        app.getJobPosting().getOrganization().getCompanyName(),
                         app.getStatus(),
                         app.getAppliedAt()
                 ))
-                .collect(Collectors.toList());
+                .toList();
 
         return ResponseEntity.ok(applications);
     }
