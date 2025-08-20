@@ -40,7 +40,9 @@ public class AuthController {
      * Register a new user.
      * <p>
      * If the email is already taken, returns HTTP 400.
-     * Otherwise, saves the user with an encoded password and role.
+     * If the role is not provided, defaults to "STUDENT".
+     * If the role is "ADMIN", returns HTTP 403.
+     * Otherwise, save the user with an encoded password and role.
      *
      * @param registerRequest request body containing user registration data
      * @return ResponseEntity with status and message
@@ -52,11 +54,30 @@ public class AuthController {
                     .body(Map.of("message", MSG_EMAIL_USED));
         }
 
+        // Default role if none provided
+        String requestedRole = registerRequest.getRole() != null
+                ? registerRequest.getRole().toUpperCase()
+                : "STUDENT";
+
+        // Prevent creating ADMIN via API
+        if (requestedRole.equals("ADMIN")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Cannot assign ADMIN role via registration"));
+        }
+
+        UserRole role;
+        try {
+            role = UserRole.valueOf(requestedRole);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "Invalid role"));
+        }
+
         User user = User.builder()
                 .username(registerRequest.getName())
                 .email(registerRequest.getEmail())
                 .password(passwordEncoder.encode(registerRequest.getPassword()))
-                .role(UserRole.valueOf(registerRequest.getRole().toUpperCase()))
+                .role(role)
                 .build();
 
         userRepository.save(user);
@@ -64,6 +85,7 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(Map.of("message", MSG_REGISTER_SUCCESS));
     }
+
 
     /**
      * Authenticate user and return JWT token.
