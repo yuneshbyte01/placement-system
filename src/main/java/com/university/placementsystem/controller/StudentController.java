@@ -1,9 +1,6 @@
 package com.university.placementsystem.controller;
 
-import com.university.placementsystem.dto.StudentCreateRequest;
-import com.university.placementsystem.dto.StudentDTO;
-import com.university.placementsystem.dto.StudentUpdateRequest;
-import com.university.placementsystem.dto.UserDTO;
+import com.university.placementsystem.dto.*;
 import com.university.placementsystem.entity.Student;
 import com.university.placementsystem.entity.User;
 import com.university.placementsystem.entity.UserRole;
@@ -25,7 +22,12 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Controller for managing student profiles and resume uploads.
+ * REST controller for managing student profiles and resume uploads.
+ * <p>
+ * Provides endpoints to create, read, and update student profiles,
+ * as well as uploading PDF resumes.
+ * Authentication is required, and role-based access control ensures
+ * only users with the STUDENT role can access these endpoints.
  */
 @RestController
 @RequestMapping("/api/student")
@@ -40,11 +42,17 @@ public class StudentController {
     private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
     private static final String PDF_CONTENT_TYPE = "application/pdf";
 
-    // ------------------- Profile Endpoints -------------------
+    // ------------------- Test Endpoint -------------------
 
+    /**
+     * Simple test endpoint to verify the student API is accessible.
+     *
+     * @param authentication Authentication object injected by Spring Security
+     * @return JSON with a message, email, and role of a logged-in user
+     */
     @GetMapping("/test")
     public ResponseEntity<?> testStudentEndpoint(Authentication authentication) {
-        UserDTO user = (UserDTO) authentication.getPrincipal();
+        UserDTO user = getUser(authentication);
         return ResponseEntity.ok(Map.of(
                 "message", "STUDENT endpoint accessed successfully",
                 "email", user.getEmail(),
@@ -52,14 +60,22 @@ public class StudentController {
         ));
     }
 
+    // ------------------- Profile Endpoints -------------------
+
+    /**
+     * Creates a new student profile for the logged-in user.
+     *
+     * @param authentication Authentication object injected by Spring Security
+     * @param request        DTO containing profile data
+     * @return HTTP 201 on success, 400 if the profile already exists
+     */
     @PostMapping("/profile")
     public ResponseEntity<?> createProfile(Authentication authentication,
                                            @Valid @RequestBody StudentCreateRequest request) {
-        UserDTO user = (UserDTO) authentication.getPrincipal();
+        UserDTO user = getUser(authentication);
 
         if (studentRepository.findByUserEmail(user.getEmail()).isPresent()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("message", "Profile already exists"));
+            return badRequest("Profile already exists");
         }
 
         Student student = Student.builder()
@@ -76,9 +92,15 @@ public class StudentController {
                 .body(Map.of("message", "Profile created successfully"));
     }
 
+    /**
+     * Retrieves the student profile for the logged-in user.
+     *
+     * @param authentication Authentication object injected by Spring Security
+     * @return StudentDTO with profile details or 404 if not found
+     */
     @GetMapping("/profile")
     public ResponseEntity<?> getProfile(Authentication authentication) {
-        return findStudentByAuth(authentication)
+        return getStudent(authentication)
                 .map(student -> new StudentDTO(
                         student.getUniversity(),
                         student.getDegree(),
@@ -88,19 +110,23 @@ public class StudentController {
                         student.getUser().getEmail()
                 ))
                 .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body((StudentDTO) Map.of("message", "Student profile not found")));
+                .orElseGet(this::notFound);
     }
 
-
+    /**
+     * Updates the profile of the logged-in student.
+     *
+     * @param authentication Authentication object injected by Spring Security
+     * @param request        DTO containing updated profile fields
+     * @return HTTP 200 on success, 404 if profile not found
+     */
     @PutMapping("/profile")
     public ResponseEntity<?> updateProfile(Authentication authentication,
                                            @Valid @RequestBody StudentUpdateRequest request) {
-        Optional<Student> studentOpt = findStudentByAuth(authentication);
+        Optional<Student> studentOpt = getStudent(authentication);
 
         if (studentOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("message", "Student profile not found"));
+            return notFound();
         }
 
         Student student = studentOpt.get();
@@ -116,47 +142,40 @@ public class StudentController {
 
     // ------------------- Resume Upload Endpoint -------------------
 
+    /**
+     * Uploads a PDF resume for the logged-in student.
+     * <p>
+     * Validates file type, size, and ensures only users with a STUDENT role
+     * can upload. Saves the file to a configurable directory and updates
+     * the student's profile.
+     *
+     * @param authentication Authentication object injected by Spring Security
+     * @param file           Multipart PDF file
+     * @return HTTP 200 with a resume path on success, 400/403/404 on errors
+     */
     @PostMapping("/upload-resume")
     public ResponseEntity<?> uploadResume(Authentication authentication,
                                           @RequestParam("file") MultipartFile file) {
-        UserDTO user = (UserDTO) authentication.getPrincipal();
+        UserDTO user = getUser(authentication);
 
-        // Ensure only a STUDENT role can upload
-        if (user.getRole() != UserRole.STUDENT) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("message", "Access denied: STUDENT role required"));
-        }
+        if (!hasStudentRole(authentication)) return forbidden();
 
         // --- File validations ---
-        if (file.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "File is empty"));
-        }
-        if (!PDF_CONTENT_TYPE.equalsIgnoreCase(file.getContentType())) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Only PDF files are allowed"));
-        }
-        if (file.getSize() > MAX_FILE_SIZE) {
-            return ResponseEntity.badRequest().body(Map.of("message", "File exceeds 5MB limit"));
-        }
+        if (file.isEmpty()) return badRequest("File is empty");
+        if (!PDF_CONTENT_TYPE.equalsIgnoreCase(file.getContentType())) return badRequest("Only PDF files are allowed");
+        if (file.getSize() > MAX_FILE_SIZE) return badRequest("File exceeds 5MB limit");
 
         try {
-            // --- Resolve absolute upload directory ---
             Path dirPath = Path.of(uploadDir).toAbsolutePath();
-            if (!Files.exists(dirPath)) {
-                Files.createDirectories(dirPath);
-            }
+            if (!Files.exists(dirPath)) Files.createDirectories(dirPath);
 
-            // --- Save file safely ---
             String fileName = sanitizeFileName(user.getEmail()) + "_" + UUID.randomUUID() + ".pdf";
             Path destination = dirPath.resolve(fileName);
 
             Files.copy(file.getInputStream(), destination, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 
-            // --- Update student profile in DB ---
-            Optional<Student> studentOpt = findStudentByAuth(authentication);
-            if (studentOpt.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(Map.of("message", "Student profile not found"));
-            }
+            Optional<Student> studentOpt = getStudent(authentication);
+            if (studentOpt.isEmpty()) return notFound();
 
             Student student = studentOpt.get();
             student.setResumePath(destination.toString());
@@ -173,20 +192,43 @@ public class StudentController {
         }
     }
 
-    // ------------------- Private Helpers -------------------
+    // ------------------- Private Helper Methods -------------------
 
-    /**
-     * Finds the logged-in student's profile based on authentication.
-     */
-    private Optional<Student> findStudentByAuth(Authentication authentication) {
-        UserDTO user = (UserDTO) authentication.getPrincipal();
-        return studentRepository.findByUserEmail(user.getEmail());
+    /** Get a logged-in user from authentication */
+    private UserDTO getUser(Authentication authentication) {
+        return (UserDTO) authentication.getPrincipal();
     }
 
-    /**
-     * Sanitizes email for safe file naming.
-     */
+    /** Get student entity for logged-in user */
+    private Optional<Student> getStudent(Authentication authentication) {
+        return studentRepository.findByUserEmail(getUser(authentication).getEmail());
+    }
+
+    /** Check if user has STUDENT role */
+    private boolean hasStudentRole(Authentication authentication) {
+        return getUser(authentication).getRole() == UserRole.STUDENT;
+    }
+
+    /** Return 403 Forbidden response */
+    private ResponseEntity<Map<String, String>> forbidden() {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of("message", "Access denied: STUDENT role required"));
+    }
+
+    /** Return 400 Bad Request response with a message */
+    private ResponseEntity<Map<String, String>> badRequest(String message) {
+        return ResponseEntity.badRequest().body(Map.of("message", message));
+    }
+
+    /** Return 404 Not Found response for student profile */
+    private ResponseEntity<StudentDTO> notFound() {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body((StudentDTO) Map.of("message", "STUDENT profile not found"));
+    }
+
+    /** Sanitize email for safe file name */
     private String sanitizeFileName(String email) {
         return email.replaceAll("[^a-zA-Z0-9]", "_");
     }
+
 }
