@@ -10,9 +10,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Controller for Student profile management.
@@ -70,5 +74,58 @@ public class StudentController {
                     response.put("message", "Cannot update: Student profile not found for user: " + user.getEmail());
                     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
                 });
+    }
+
+    /**
+     * Upload resume for the student.
+     */
+    @PostMapping("/upload-resume")
+    public ResponseEntity<?> uploadResume(Authentication authentication,
+                                          @RequestParam("file") MultipartFile file) {
+        User user = (User) authentication.getPrincipal();
+
+        // ✅ Validate file
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "File is empty!"));
+        }
+        if (!file.getContentType().equalsIgnoreCase("application/pdf")) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Only PDF files are allowed!"));
+        }
+        if (file.getSize() > 5 * 1024 * 1024) { // 5MB limit
+            return ResponseEntity.badRequest().body(Map.of("message", "File size exceeds 5MB!"));
+        }
+
+        // ✅ Save file locally
+        String uploadDir = "uploads/resumes/";
+        File dir = new File(uploadDir);
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+
+        String fileName = "resume_" + user.getId() + ".pdf"; // unique per student
+        File destination = new File(uploadDir + fileName);
+
+        try {
+            file.transferTo(destination);
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Failed to save file!"));
+        }
+
+        // ✅ Save path in DB
+        Optional<Student> optionalStudent = studentRepository.findByUserId(user.getId());
+        if (optionalStudent.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Student profile not found for user: " + user.getEmail()));
+        }
+
+        Student student = optionalStudent.get();
+        student.setResumePath(destination.getAbsolutePath());
+        studentRepository.save(student);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Resume uploaded successfully!",
+                "resumePath", destination.getAbsolutePath()
+        ));
     }
 }
