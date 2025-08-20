@@ -1,6 +1,7 @@
 package com.university.placementsystem.controller;
 
 import com.university.placementsystem.dto.StudentCreateRequest;
+import com.university.placementsystem.dto.StudentDTO;
 import com.university.placementsystem.dto.StudentUpdateRequest;
 import com.university.placementsystem.dto.UserDTO;
 import com.university.placementsystem.entity.Student;
@@ -78,10 +79,19 @@ public class StudentController {
     @GetMapping("/profile")
     public ResponseEntity<?> getProfile(Authentication authentication) {
         return findStudentByAuth(authentication)
+                .map(student -> new StudentDTO(
+                        student.getUniversity(),
+                        student.getDegree(),
+                        student.getGraduationYear(),
+                        student.getSkills(),
+                        student.getResumePath(),
+                        student.getUser().getEmail()
+                ))
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body((Student) Map.of("message", "Student profile not found")));
+                        .body((StudentDTO) Map.of("message", "Student profile not found")));
     }
+
 
     @PutMapping("/profile")
     public ResponseEntity<?> updateProfile(Authentication authentication,

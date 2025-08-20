@@ -58,7 +58,7 @@ public class Student {
     /**
      * Skills (comma-separated for now).
      * <p>
-     * In future, consider normalizing into a separate table
+     * In the future, consider normalizing into a separate table
      * or storing as JSON.
      */
     @Column(length = 500)
