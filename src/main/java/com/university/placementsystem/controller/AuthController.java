@@ -92,26 +92,25 @@ public class AuthController {
      * <p>
      * If credentials are invalid, returns HTTP 401.
      *
-     * @param loginRequest request body containing email and password
+     * @param request request body containing email and password
      * @return ResponseEntity with JWT token and user details
      */
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
-        Optional<User> userOpt = userRepository.findByEmail(loginRequest.getEmail());
+    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Invalid credentials"));
 
-        if (userOpt.isEmpty() ||
-                !passwordEncoder.matches(loginRequest.getPassword(), userOpt.get().getPassword())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("message", MSG_INVALID_CREDENTIALS));
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new RuntimeException("Invalid credentials");
         }
 
-        User user = userOpt.get();
-        String token = jwtUtil.generateToken(
-                String.valueOf(user.getId()),
-                user.getEmail(),
-                user.getRole(),
-                user.getUsername()
-        );
+        if (!user.isActive()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "Your account is deactivated. Contact admin."));
+        }
+
+        String token = jwtUtil.generateToken(String.valueOf(user.getId()), user.getEmail(), user.getRole(),
+                user.getUsername());
 
         return ResponseEntity.ok(Map.of(
                 "token", token,
@@ -119,4 +118,5 @@ public class AuthController {
                 "role", user.getRole().name()
         ));
     }
+
 }

@@ -1,8 +1,11 @@
 package com.university.placementsystem.security;
 
+import com.university.placementsystem.entity.User;
 import com.university.placementsystem.entity.UserRole;
+import com.university.placementsystem.repository.UserRepository;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
@@ -18,12 +21,15 @@ import java.util.Map;
  * - Validates expiration and signature
  */
 @Component
+@RequiredArgsConstructor
 public class JwtUtil {
 
     // ==== Constants ====
     private static final String CLAIM_ID = "id";
     private static final String CLAIM_ROLE = "role";
     private static final String CLAIM_NAME = "name";
+
+    private final UserRepository userRepository;
 
     // Secret key (should be loaded from configuration in production!)
     private static final String SECRET =
@@ -104,4 +110,10 @@ public class JwtUtil {
             return false; // invalid token
         }
     }
+
+    public User loadUserById(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
 }

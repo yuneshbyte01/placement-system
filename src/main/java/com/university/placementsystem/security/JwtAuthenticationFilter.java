@@ -1,6 +1,7 @@
 package com.university.placementsystem.security;
 
 import com.university.placementsystem.dto.UserDTO;
+import com.university.placementsystem.entity.User;
 import com.university.placementsystem.entity.UserRole;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -38,7 +39,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         final String authHeader = request.getHeader("Authorization");
 
-        // Process only if a Bearer token is present
         if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
             final String token = authHeader.substring(7);
 
@@ -48,8 +48,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 final String roleStr = jwtUtil.extractRole(token);
                 final String name = jwtUtil.extractName(token);
 
-                // Set authentication only if not already done
                 if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                    // ✅ Fetch user from DB to check active status
+                    User user = jwtUtil.loadUserById(id); // You need a method to get User by ID
+                    if (!user.isActive()) {
+                        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                        response.setContentType("application/json");
+                        response.getWriter().write("{\"message\": \"Your account is deactivated\"}");
+                        return; // Stop a further filter chain
+                    }
+
                     final UserRole role = UserRole.valueOf(roleStr.toUpperCase());
                     final UserDTO userDto = new UserDTO(id, name, email, role);
 
@@ -68,7 +76,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         }
 
-        // Continue the filter chain
         filterChain.doFilter(request, response);
     }
+
 }
