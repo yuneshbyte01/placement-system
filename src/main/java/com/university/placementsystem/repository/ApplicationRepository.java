@@ -13,23 +13,16 @@ public interface ApplicationRepository extends JpaRepository<Application, Long> 
 
     /**
      * Find all applications made by a specific student.
-     * @param studentId the ID of the student
-     * @return list of applications
      */
-    List<Application> findByStudentId(Long studentId);
+    List<Application> findByStudent_Id(Long studentId);
 
     /**
      * Find all applications for a specific job posting.
-     * @param jobPostingId the ID of the job posting
-     * @return list of applications
      */
-    List<Application> findByJobPostingId(Long jobPostingId);
+    List<Application> findByJobPosting_Id(Long jobPostingId);
 
     /**
      * Check if a student has already applied for a specific job.
-     * @param studentId the ID of the student
-     * @param jobPostingId the ID of the job posting
-     * @return true if the application exists, false otherwise
      */
-    boolean existsByStudentIdAndJobPostingId(Long studentId, Long jobPostingId);
+    boolean existsByStudent_IdAndJobPosting_Id(Long studentId, Long jobPostingId);
 }
