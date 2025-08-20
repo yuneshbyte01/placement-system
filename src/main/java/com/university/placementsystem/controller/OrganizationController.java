@@ -152,7 +152,8 @@ public class OrganizationController {
                         job.getDescription(),
                         job.getSkillsRequired(),
                         job.getEligibilityCriteria(),
-                        job.getCreatedAt()
+                        job.getCreatedAt(),
+                        job.getOrganization().getCompanyName()
                 ))
                 .collect(Collectors.toList());
 

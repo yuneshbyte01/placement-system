@@ -1,8 +1,10 @@
 package com.university.placementsystem.controller;
 
+import com.university.placementsystem.dto.JobPostingDTO;
 import com.university.placementsystem.dto.OrganizationDTO;
 import com.university.placementsystem.entity.Organization;
 import com.university.placementsystem.entity.User;
+import com.university.placementsystem.repository.JobPostingRepository;
 import com.university.placementsystem.repository.OrganizationRepository;
 import com.university.placementsystem.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,7 @@ public class AdminController {
 
     private final UserRepository userRepository;
     private final OrganizationRepository organizationRepository;
+    private final JobPostingRepository jobPostingRepository;
 
     /** --- Test endpoint --- */
     @GetMapping("/test")
@@ -103,10 +106,30 @@ public class AdminController {
     public ResponseEntity<?> rejectOrganization(@PathVariable Long id) {
         return organizationRepository.findById(id)
                 .map(org -> {
-                    organizationRepository.delete(org);
+                    org.setApproved(false);
+                    organizationRepository.save(org);
                     return ResponseEntity.ok(Map.of("message", "Organization rejected and removed"));
                 })
                 .orElseGet(() -> ResponseEntity.status(404).body(Map.of("message", "Organization not found")));
+    }
+
+    /** --- Monitor all job postings --- */
+    @GetMapping("/jobs")
+    public ResponseEntity<List<JobPostingDTO>> getAllJobPostings() {
+        List<JobPostingDTO> jobs = jobPostingRepository.findAll()
+                .stream()
+                .map(job -> new JobPostingDTO(
+                        job.getId(),
+                        job.getTitle(),
+                        job.getDescription(),
+                        job.getSkillsRequired(),
+                        job.getEligibilityCriteria(),
+                        job.getCreatedAt(),
+                        job.getOrganization().getCompanyName()
+                ))
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(jobs);
     }
 
     // ------------------- Private Helper -------------------

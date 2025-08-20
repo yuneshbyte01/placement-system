@@ -3,11 +3,10 @@ package com.university.placementsystem.dto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
 import java.time.LocalDateTime;
 
 /**
- * Lightweight DTO for returning job postings in API responses.
+ * DTO for returning job postings along with the organization’s name.
  */
 @Data
 @NoArgsConstructor
@@ -19,4 +18,5 @@ public class JobPostingDTO {
     private String skillsRequired;
     private String eligibilityCriteria;
     private LocalDateTime createdAt;
+    private String organizationName;
 }
