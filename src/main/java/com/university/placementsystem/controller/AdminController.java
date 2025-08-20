@@ -1,9 +1,11 @@
 package com.university.placementsystem.controller;
 
+import com.university.placementsystem.dto.ApplicationDTO;
 import com.university.placementsystem.dto.JobPostingDTO;
 import com.university.placementsystem.dto.OrganizationDTO;
 import com.university.placementsystem.entity.Organization;
 import com.university.placementsystem.entity.User;
+import com.university.placementsystem.repository.ApplicationRepository;
 import com.university.placementsystem.repository.JobPostingRepository;
 import com.university.placementsystem.repository.OrganizationRepository;
 import com.university.placementsystem.repository.UserRepository;
@@ -23,6 +25,7 @@ public class AdminController {
     private final UserRepository userRepository;
     private final OrganizationRepository organizationRepository;
     private final JobPostingRepository jobPostingRepository;
+    private final ApplicationRepository applicationRepository;
 
     /** --- Test endpoint --- */
     @GetMapping("/test")
@@ -130,6 +133,41 @@ public class AdminController {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(jobs);
+    }
+
+    /** --- List all applications --- */
+    @GetMapping("/applications")
+    public ResponseEntity<List<ApplicationDTO>> getAllApplications() {
+        List<ApplicationDTO> applications = applicationRepository.findAll()
+                .stream()
+                .map(app -> new ApplicationDTO(
+                        app.getId(),
+                        app.getStudent().getUser().getUsername(),
+                        app.getStudent().getUser().getEmail(),
+                        app.getJobPosting().getTitle(),
+                        app.getJobPosting().getOrganization().getCompanyName(),
+                        app.getStatus().name()
+                ))
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(applications);
+    }
+
+    /** --- Get a single application by ID --- */
+    @GetMapping("/applications/{id}")
+    public ResponseEntity<?> getApplicationById(@PathVariable Long id) {
+        return applicationRepository.findById(id)
+                .map(app -> new ApplicationDTO(
+                        app.getId(),
+                        app.getStudent().getUser().getUsername(),
+                        app.getStudent().getUser().getEmail(),
+                        app.getJobPosting().getTitle(),
+                        app.getJobPosting().getOrganization().getCompanyName(),
+                        app.getStatus().name()
+                ))
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.status(404)
+                        .body((ApplicationDTO) Map.of("message", "Application not found")));
     }
 
     // ------------------- Private Helper -------------------
