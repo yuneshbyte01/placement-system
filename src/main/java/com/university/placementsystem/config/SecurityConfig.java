@@ -14,10 +14,13 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 /**
  * Spring Security configuration for the Placement System.
- * <p>
- * - Configures JWT authentication
- * - Role-based access control
- * - Password hashing
+ *
+ * <p>Configures:</p>
+ * <ul>
+ *     <li>JWT authentication filter</li>
+ *     <li>Role-based access control for endpoints</li>
+ *     <li>Password hashing with BCrypt</li>
+ * </ul>
  */
 @Configuration
 @RequiredArgsConstructor
@@ -27,35 +30,45 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     /**
-     * Configures the security filter chain:
-     * - Disables CSRF
-     * - Secures endpoints based on roles
-     * - Adds JWT filter before UsernamePasswordAuthenticationFilter
+     * Defines the application security filter chain.
      *
-     * @param http HttpSecurity instance
-     * @return configured SecurityFilterChain
-     * @throws Exception if config fails
+     * <p>Key settings:</p>
+     * <ul>
+     *     <li>Disable CSRF for REST APIs</li>
+     *     <li>Permit all requests to {@code /api/auth/**} (login/registration)</li>
+     *     <li>Restrict access to endpoints by role</li>
+     *     <li>Add JWT filter before {@link UsernamePasswordAuthenticationFilter}</li>
+     * </ul>
+     *
+     * @param http the {@link HttpSecurity} builder
+     * @return a configured {@link SecurityFilterChain}
+     * @throws Exception if an error occurs during configuration
      */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(AbstractHttpConfigurer::disable)  // Disable CSRF for REST APIs
+                // Disable CSRF (stateless REST API)
+                .csrf(AbstractHttpConfigurer::disable)
+
+                // Configure endpoint authorization
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()             // registration & login
-                        .requestMatchers("/api/student/**").hasRole("STUDENT")   // STUDENT only
-                        .requestMatchers("/api/organization/**").hasRole("ORGANIZATION")  // ORGANIZATION only
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")       // ADMIN only
-                        .anyRequest().authenticated()                             // all others require auth
+                        .requestMatchers("/api/auth/**").permitAll()                     // public: login, register
+                        .requestMatchers("/api/student/**").hasRole("STUDENT")           // only STUDENT role
+                        .requestMatchers("/api/organization/**").hasRole("ORGANIZATION") // only ORGANIZATION role
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")               // only ADMIN role
+                        .anyRequest().authenticated()                                   // all other endpoints need login
                 )
+
+                // Add JWT authentication filter before default username-password filter
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
     /**
-     * BCrypt password encoder for hashing user passwords.
+     * BCrypt password encoder for secure password hashing.
      *
-     * @return PasswordEncoder
+     * @return a {@link PasswordEncoder} instance
      */
     @Bean
     public PasswordEncoder passwordEncoder() {

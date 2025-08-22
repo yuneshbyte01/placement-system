@@ -1,21 +1,23 @@
 package com.university.placementsystem.entity;
 
 /**
- * Enum representing the status of a student's application to a job.
- * <p>
- * This enum is used to track the progress of a student's application
+ * Enumeration representing the status of a student's application
+ * in the recruitment process.
+ *
+ * <p>Tracks the lifecycle of an application from submission
+ * to final decision by the organization.</p>
  */
 public enum ApplicationStatus {
 
-    /** The application has been submitted but not yet reviewed. */
+    // Application has been submitted but not yet reviewed
     APPLIED,
 
-    /** The application has been shortlisted for further consideration. */
+    // Application has been shortlisted for further consideration
     SHORTLISTED,
 
-    /** The application has been rejected by the organization. */
+    // Application has been rejected by the organization
     REJECTED,
 
-    /** The application has been accepted and the student has been selected. */
+    // Application has been accepted and the student has been selected
     SELECTED
 }

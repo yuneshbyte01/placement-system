@@ -1,9 +1,8 @@
 package com.university.placementsystem.controller;
 
 import com.university.placementsystem.dto.UserDTO;
-import com.university.placementsystem.entity.*;
-import com.university.placementsystem.repository.ApplicationRepository;
-import com.university.placementsystem.repository.JobPostingRepository;
+import com.university.placementsystem.entity.ApplicationStatus;
+import com.university.placementsystem.service.OrganizationApplicationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,107 +13,116 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.Map;
 
 /**
- * Controller for organizations to manage job applications.
- * Task 24: Shortlist / Select / Reject applicants
+ * REST controller for organizations to manage application statuses
+ * (shortlist, select, reject) for their job postings.
+ *
+ * <p>Endpoints require authentication and organization ownership
+ * of the target job posting.</p>
  */
 @RestController
 @RequestMapping("/api/organization")
 @RequiredArgsConstructor
 public class OrganizationApplicationController {
 
-    private final ApplicationRepository applicationRepository;
-    private final JobPostingRepository jobPostingRepository;
+    // Business service for status updates
+    private final OrganizationApplicationService applicationService;
+
+    // ---- Messages / constants ----
+    private static final String MSG_TEST_OK   = "StudentApplicationController is working!"; // keep existing text
+    private static final String MSG_STATUS_OK = "success";
+    private static final String MSG_INTERNAL  = "Internal server error";
 
     /**
-     * Simple test endpoint to verify the controller is working.
+     * Simple test endpoint to verify the controller is reachable.
+     *
+     * @return 200 with a small JSON payload indicating success
      */
     @GetMapping("/test-application")
-    public ResponseEntity<Map<String, String>> testEndpoint() {
-        return ResponseEntity.ok(Map.of(
-                "message", "StudentApplicationController is working!",
-                "status", "success"
-        ));
+    public ResponseEntity<?> testEndpoint() {
+        try {
+            return ResponseEntity.ok(Map.of(
+                    "message", MSG_TEST_OK,
+                    "status", MSG_STATUS_OK
+            ));
+        } catch (ResponseStatusException ex) {
+            return ResponseEntity.status(ex.getStatusCode()).body(ex.getReason());
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(MSG_INTERNAL);
+        }
     }
 
-    // ------------------- Shortlist Application -------------------
-
+    /**
+     * Shortlists an application for a specific job posting owned by the
+     * authenticated organization.
+     *
+     * @param authentication Spring Security authentication (principal is {@link UserDTO})
+     * @param jobId          ID of the job posting
+     * @param applicationId  ID of the application to update
+     * @return 200 with a confirmation map; error status if validation fails
+     */
     @PutMapping("/jobs/{jobId}/applications/{applicationId}/shortlist")
     public ResponseEntity<?> shortlistApplicant(Authentication authentication,
                                                 @PathVariable Long jobId,
                                                 @PathVariable Long applicationId) {
-        return updateApplicationStatus(authentication, jobId, applicationId, ApplicationStatus.SHORTLISTED);
+        try {
+            UserDTO orgUser = (UserDTO) authentication.getPrincipal();
+            return ResponseEntity.ok(
+                    applicationService.updateApplicationStatus(orgUser, jobId, applicationId, ApplicationStatus.SHORTLISTED)
+            );
+        } catch (ResponseStatusException ex) {
+            return ResponseEntity.status(ex.getStatusCode()).body(ex.getReason());
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(MSG_INTERNAL);
+        }
     }
 
-    // ------------------- Select Application -------------------
-
+    /**
+     * Marks an application as selected for a specific job posting owned by the
+     * authenticated organization.
+     *
+     * @param authentication Spring Security authentication (principal is {@link UserDTO})
+     * @param jobId          ID of the job posting
+     * @param applicationId  ID of the application to update
+     * @return 200 with a confirmation map; error status if validation fails
+     */
     @PutMapping("/jobs/{jobId}/applications/{applicationId}/select")
     public ResponseEntity<?> selectApplicant(Authentication authentication,
                                              @PathVariable Long jobId,
                                              @PathVariable Long applicationId) {
-        return updateApplicationStatus(authentication, jobId, applicationId, ApplicationStatus.SELECTED);
+        try {
+            UserDTO orgUser = (UserDTO) authentication.getPrincipal();
+            return ResponseEntity.ok(
+                    applicationService.updateApplicationStatus(orgUser, jobId, applicationId, ApplicationStatus.SELECTED)
+            );
+        } catch (ResponseStatusException ex) {
+            return ResponseEntity.status(ex.getStatusCode()).body(ex.getReason());
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(MSG_INTERNAL);
+        }
     }
 
-    // ------------------- Reject Application -------------------
-
+    /**
+     * Rejects an application for a specific job posting owned by the
+     * authenticated organization.
+     *
+     * @param authentication Spring Security authentication (principal is {@link UserDTO})
+     * @param jobId          ID of the job posting
+     * @param applicationId  ID of the application to update
+     * @return 200 with a confirmation map; error status if validation fails
+     */
     @PutMapping("/jobs/{jobId}/applications/{applicationId}/reject")
     public ResponseEntity<?> rejectApplicant(Authentication authentication,
                                              @PathVariable Long jobId,
                                              @PathVariable Long applicationId) {
-        return updateApplicationStatus(authentication, jobId, applicationId, ApplicationStatus.REJECTED);
-    }
-
-    // ------------------- Private Helper Method -------------------
-
-    /**
-     * Updates application status with all validation checks.
-     */
-    private ResponseEntity<?> updateApplicationStatus(Authentication authentication,
-                                                      Long jobId,
-                                                      Long applicationId,
-                                                      ApplicationStatus newStatus) {
-
-        // Check an organization role
-        UserDTO orgUser = (UserDTO) authentication.getPrincipal();
-        if (orgUser.getRole() != UserRole.ORGANIZATION) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("message", "Access denied: ORG role required"));
+        try {
+            UserDTO orgUser = (UserDTO) authentication.getPrincipal();
+            return ResponseEntity.ok(
+                    applicationService.updateApplicationStatus(orgUser, jobId, applicationId, ApplicationStatus.REJECTED)
+            );
+        } catch (ResponseStatusException ex) {
+            return ResponseEntity.status(ex.getStatusCode()).body(ex.getReason());
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(MSG_INTERNAL);
         }
-
-        // Fetch job and verify ownership
-        JobPosting job = jobPostingRepository.findById(jobId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Job posting not found"));
-
-        // Correct ownership check via organization profile → user
-        if (!job.getOrganization().getUser().getId().equals(orgUser.getId())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("message", "You do not own this job posting"));
-        }
-
-        // Fetch application
-        Application application = applicationRepository.findById(applicationId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Application not found"));
-
-        // Verify the application belongs to the job
-        if (!application.getJobPosting().getId().equals(jobId)) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("message", "Application does not belong to this job"));
-        }
-
-        // Prevent status override if already finalized
-        if (application.getStatus() == ApplicationStatus.SELECTED ||
-                application.getStatus() == ApplicationStatus.REJECTED) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("message", "Cannot update application already finalized"));
-        }
-
-        // Update status
-        application.setStatus(newStatus);
-        applicationRepository.save(application);
-
-        return ResponseEntity.ok(Map.of(
-                "message", "Application status updated",
-                "applicationId", application.getId(),
-                "newStatus", newStatus.toString()
-        ));
     }
 }

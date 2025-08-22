@@ -5,20 +5,25 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 /**
- * DTO for creating a student profile.
+ * Request DTO for creating a new student profile.
+ *
+ * <p>Used when a student first sets up their profile.</p>
  */
 @Data
 public class StudentCreateRequest {
 
-    @NotBlank(message = "University cannot be blank")
+    // Name of the university the student is enrolled in
+    @NotBlank(message = "University is required")
     private String university;
 
-    @NotBlank(message = "Degree cannot be blank")
+    // Degree program of the student (e.g., B.Sc. CS, MBA)
+    @NotBlank(message = "Degree is required")
     private String degree;
 
-    @NotNull(message = "Graduation year cannot be null")
+    // Graduation year of the student
+    @NotNull(message = "Graduation year is required")
     private Integer graduationYear;
 
-    @NotBlank(message = "Skills cannot be blank")
+    // List of skills (e.g., Java, Spring Boot, SQL)
     private String skills;
 }

@@ -1,202 +1,186 @@
 package com.university.placementsystem.controller;
 
 import com.university.placementsystem.dto.*;
-import com.university.placementsystem.entity.JobPosting;
-import com.university.placementsystem.entity.Organization;
-import com.university.placementsystem.entity.UserRole;
-import com.university.placementsystem.repository.JobPostingRepository;
-import com.university.placementsystem.repository.OrganizationRepository;
-import jakarta.validation.Valid;
+import com.university.placementsystem.service.OrganizationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 /**
- * REST Controller for managing organization profiles and job postings.
+ * REST Controller for organization-related endpoints.
+ *
+ * <p>Handles HTTP requests related to organization profiles and job postings.
+ * Delegates business logic to {@link OrganizationService}.</p>
+ *
+ * <p>Endpoints require authentication and are restricted to users with
+ * the ORGANIZATION role.</p>
  */
 @RestController
 @RequestMapping("/api/organization")
 @RequiredArgsConstructor
 public class OrganizationController {
 
-    private final OrganizationRepository organizationRepository;
-    private final JobPostingRepository jobPostingRepository;
+    // Dependencies
+    private final OrganizationService organizationService;
+
+    // ---- Messages / constants ----
+    private static final String MSG_ORG_ENDPOINT_OK   = "ORGANIZATION endpoint accessed successfully";
+    private static final String MSG_PROFILE_CREATED    = "Organization profile created successfully";
+    private static final String MSG_PROFILE_UPDATED    = "Profile updated successfully";
+    private static final String MSG_PROFILE_NOT_FOUND  = "Organization profile not found";
+    private static final String MSG_JOB_CREATED        = "Job posting created successfully";
+    private static final String MSG_INTERNAL           = "Internal server error";
+
+    // ------------------- Test Endpoint -------------------
+
+    /**
+     * Test endpoint to verify the organization API is accessible.
+     *
+     * @param authentication Authentication object injected by Spring Security
+     * @return JSON with a message, email, and role of the logged-in user
+     */
+    @GetMapping("/test")
+    public ResponseEntity<?> testOrganization(Authentication authentication) {
+        try {
+            UserDTO user = getUser(authentication);
+            return ResponseEntity.ok(Map.of(
+                    "message", MSG_ORG_ENDPOINT_OK,
+                    "email", user.getEmail(),
+                    "role", user.getRole().name()
+            ));
+        } catch (ResponseStatusException ex) {
+            return ResponseEntity.status(ex.getStatusCode()).body(ex.getReason());
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(MSG_INTERNAL);
+        }
+    }
 
     // ------------------- Profile Endpoints -------------------
 
-    @GetMapping("/test")
-    public ResponseEntity<?> testOrganizationEndpoint(Authentication authentication) {
-        return ResponseEntity.ok(Map.of(
-                "message", "ORGANIZATION endpoint accessed successfully",
-                "email", getUserDTO(authentication).getEmail(),
-                "role", getUserDTO(authentication).getRole().name()
-        ));
-    }
-
+    /**
+     * Create a new organization profile.
+     *
+     * @param authentication Authentication object injected by Spring Security
+     * @param request        DTO containing profile creation data
+     * @return HTTP 201 with a success message, or 400 if the profile exists
+     */
     @PostMapping("/profile")
     public ResponseEntity<?> createProfile(Authentication authentication,
-                                           @Valid @RequestBody OrganizationCreateRequest request) {
-        UserDTO user = getUserDTO(authentication);
-
-        if (organizationRepository.findByUserEmail(user.getEmail()).isPresent()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("message", "Profile already exists"));
+                                           @RequestBody OrganizationCreateRequest request) {
+        try {
+            UserDTO user = getUser(authentication);
+            organizationService.createProfile(user, request);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(Map.of("message", MSG_PROFILE_CREATED));
+        } catch (ResponseStatusException ex) {
+            return ResponseEntity.status(ex.getStatusCode()).body(ex.getReason());
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(MSG_INTERNAL);
         }
-
-        Organization organization = Organization.builder()
-                .user(new com.university.placementsystem.entity.User(user.getId()))
-                .companyName(request.getCompanyName())
-                .industry(request.getIndustry())
-                .location(request.getLocation())
-                .description(request.getDescription())
-                .approved(false)
-                .build();
-
-        organizationRepository.save(organization);
-
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(Map.of("message", "Organization profile created successfully"));
     }
 
+    /**
+     * Retrieve the organization profile of the logged-in user.
+     *
+     * @param authentication Authentication object injected by Spring Security
+     * @return OrganizationDTO with profile data or 404 if not found
+     */
     @GetMapping("/profile")
     public ResponseEntity<?> getProfile(Authentication authentication) {
-        Optional<Organization> orgOpt = getOrganization(authentication);
-        return orgOpt
-                .map(org -> new OrganizationDTO(
-                        org.getCompanyName(),
-                        org.getIndustry(),
-                        org.getLocation(),
-                        org.getDescription(),
-                        org.isApproved(),
-                        org.getUser().getEmail()
-                ))
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body((OrganizationDTO) Map.of("message", "Organization profile not found")));
+        try {
+            UserDTO user = getUser(authentication);
+            return organizationService.getProfile(user)
+                    .map(org -> ResponseEntity.ok(new OrganizationDTO(
+                            org.getCompanyName(),
+                            org.getIndustry(),
+                            org.getLocation(),
+                            org.getDescription(),
+                            org.isApproved(),
+                            org.getUser().getEmail()
+                    )))
+                    .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                            .body((OrganizationDTO) Map.of("message", MSG_PROFILE_NOT_FOUND)));
+        } catch (ResponseStatusException ex) {
+            return ResponseEntity.status(ex.getStatusCode()).body(ex.getReason());
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(MSG_INTERNAL);
+        }
     }
 
+    /**
+     * Update the organization profile of the logged-in user.
+     *
+     * @param authentication Authentication object injected by Spring Security
+     * @param request        DTO containing updated profile fields
+     * @return HTTP 200 on success, 404 if profile not found
+     */
     @PutMapping("/profile")
     public ResponseEntity<?> updateProfile(Authentication authentication,
-                                           @Valid @RequestBody OrganizationUpdateRequest request) {
-        Optional<Organization> orgOpt = getOrganization(authentication);
-
-        if (orgOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("message", "Organization profile not found"));
+                                           @RequestBody OrganizationUpdateRequest request) {
+        try {
+            UserDTO user = getUser(authentication);
+            organizationService.updateProfile(user, request);
+            return ResponseEntity.ok(Map.of("message", MSG_PROFILE_UPDATED));
+        } catch (ResponseStatusException ex) {
+            return ResponseEntity.status(ex.getStatusCode()).body(ex.getReason());
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(MSG_INTERNAL);
         }
-
-        Organization organization = orgOpt.get();
-        organization.setCompanyName(request.getCompanyName());
-        organization.setIndustry(request.getIndustry());
-        organization.setLocation(request.getLocation());
-        organization.setDescription(request.getDescription());
-
-        organizationRepository.save(organization);
-
-        return ResponseEntity.ok(Map.of("message", "Profile updated successfully"));
     }
 
     // ------------------- Job Posting Endpoints -------------------
 
+    /**
+     * Create a new job posting for the logged-in organization.
+     *
+     * @param authentication Authentication object injected by Spring Security
+     * @param request        DTO containing job posting data
+     * @return HTTP 201 with a success message; 403 if not approved
+     */
     @PostMapping("/jobs")
     public ResponseEntity<?> createJobPosting(Authentication authentication,
-                                              @Valid @RequestBody JobPostingCreateRequest request) {
-        if (hasOrgRole(authentication)) {
-            return forbiddenResponse();
+                                              @RequestBody JobPostingCreateRequest request) {
+        try {
+            UserDTO user = getUser(authentication);
+            organizationService.createJobPosting(user, request);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(Map.of("message", MSG_JOB_CREATED));
+        } catch (ResponseStatusException ex) {
+            return ResponseEntity.status(ex.getStatusCode()).body(ex.getReason());
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(MSG_INTERNAL);
         }
-
-        Optional<Organization> orgOpt = getOrganization(authentication);
-        if (orgOpt.isEmpty()) return notFoundResponse();
-
-        Organization org = orgOpt.get();
-        if (!org.isApproved()) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("message", "Organization not approved by Admin. Cannot post jobs."));
-        }
-
-        JobPosting job = JobPosting.builder()
-                .title(request.getTitle())
-                .description(request.getDescription())
-                .skillsRequired(request.getSkillsRequired())
-                .eligibilityCriteria(request.getEligibilityCriteria())
-                .organization(org)
-                .build();
-
-        jobPostingRepository.save(job);
-
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(Map.of("message", "Job posting created successfully", "jobId", job.getId()));
     }
 
+    /**
+     * List all job postings of the logged-in organization.
+     *
+     * @param authentication Authentication object injected by Spring Security
+     * @return List of {@link JobPostingDTO}
+     */
     @GetMapping("/jobs")
     public ResponseEntity<?> listJobPostings(Authentication authentication) {
-        if (hasOrgRole(authentication)) {
-            return forbiddenResponse();
+        try {
+            UserDTO user = getUser(authentication);
+            List<JobPostingDTO> jobs = organizationService.listJobPostings(user);
+            return ResponseEntity.ok(jobs);
+        } catch (ResponseStatusException ex) {
+            return ResponseEntity.status(ex.getStatusCode()).body(ex.getReason());
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(MSG_INTERNAL);
         }
-
-        Optional<Organization> orgOpt = getOrganization(authentication);
-        if (orgOpt.isEmpty()) return notFoundResponse();
-
-        List<JobPostingDTO> jobs = jobPostingRepository.findByOrganizationId(orgOpt.get().getId())
-                .stream()
-                .map(job -> new JobPostingDTO(
-                        job.getId(),
-                        job.getTitle(),
-                        job.getDescription(),
-                        job.getSkillsRequired(),
-                        job.getEligibilityCriteria(),
-                        job.getCreatedAt(),
-                        job.getOrganization().getCompanyName()
-                ))
-                .collect(Collectors.toList());
-
-        return ResponseEntity.ok(jobs);
     }
 
     // ------------------- Private Helper Methods -------------------
 
-    /**
-     * Extract UserDTO from an Authentication object.
-     */
-    private UserDTO getUserDTO(Authentication authentication) {
+    // Extracts UserDTO from the Authentication object
+    private UserDTO getUser(Authentication authentication) {
         return (UserDTO) authentication.getPrincipal();
-    }
-
-    /**
-     * Fetch the organization profile linked to the logged-in user.
-     */
-    private Optional<Organization> getOrganization(Authentication authentication) {
-        UserDTO user = getUserDTO(authentication);
-        return organizationRepository.findByUserId(user.getId());
-    }
-
-    /**
-     * Check if the logged-in user has an ORGANIZATION role.
-     */
-    private boolean hasOrgRole(Authentication authentication) {
-        return getUserDTO(authentication).getRole() != UserRole.ORGANIZATION;
-    }
-
-    /**
-     * Return standard 403 Forbidden response.
-     */
-    private ResponseEntity<Map<String, String>> forbiddenResponse() {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(Map.of("message", "Access denied: ORGANIZATION role required"));
-    }
-
-    /**
-     * Return the standard 404 Not Found response with a custom message.
-     */
-    private ResponseEntity<Map<String, String>> notFoundResponse() {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("message", "ORGANIZATION profile not found"));
     }
 }

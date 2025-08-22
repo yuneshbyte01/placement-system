@@ -5,20 +5,25 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 /**
- * DTO for updating a student profile.
+ * Request DTO for updating an existing student profile.
+ *
+ * <p>Used when a student modifies their academic details or skills.</p>
  */
 @Data
 public class StudentUpdateRequest {
 
-    @NotBlank(message = "University cannot be blank")
+    // Updated university name
+    @NotBlank(message = "University is required")
     private String university;
 
-    @NotBlank(message = "Degree cannot be blank")
+    // Updated degree program
+    @NotBlank(message = "Degree is required")
     private String degree;
 
-    @NotNull(message = "Graduation year cannot be null")
+    // Updated graduation year
+    @NotNull(message = "Graduation year is required")
     private Integer graduationYear;
 
-    @NotBlank(message = "Skills cannot be blank")
+    // Updated list of skills
     private String skills;
 }

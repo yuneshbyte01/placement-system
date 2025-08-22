@@ -7,28 +7,19 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Repository interface for Organization entity.
- * <p>
- * Extends JpaRepository to provide CRUD operations for organizations.
- * Additional query methods allow finding an organization by its associated user.
+ * Repository interface for managing {@link Organization} entities.
+ *
+ * <p>Provides CRUD operations and query methods to retrieve organizations
+ * by their associated user or approval status.</p>
  */
 public interface OrganizationRepository extends JpaRepository<Organization, Long> {
 
-    /**
-     * Find an Organization profile by the linked User ID.
-     *
-     * @param userId the ID of the associated User
-     * @return Optional containing the Organization if found, empty otherwise
-     */
+    // Find an organization by the linked user ID
     Optional<Organization> findByUserId(Long userId);
 
-    /**
-     * Find an Organization profile by the linked User's email.
-     *
-     * @param email the email of the associated User
-     * @return Optional containing the Organization if found, empty otherwise
-     */
+    // Find an organization by the linked user's email
     Optional<Organization> findByUserEmail(String email);
 
+    // Find all organizations that are not approved
     List<Organization> findByApprovedFalse();
 }

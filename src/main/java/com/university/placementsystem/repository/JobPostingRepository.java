@@ -6,14 +6,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 /**
- * Repository for JobPosting entity.
+ * Repository interface for managing {@link JobPosting} entities.
+ *
+ * <p>Provides CRUD operations and custom queries for job postings.</p>
  */
 public interface JobPostingRepository extends JpaRepository<JobPosting, Long> {
 
-    /**
-     * Find all job postings created by a specific organization.
-     * @param organizationId the ID of the organization
-     * @return list of job postings
-     */
+    // Find all job postings created by a given organization
     List<JobPosting> findByOrganizationId(Long organizationId);
 }
