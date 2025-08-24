@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Placement System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+<div class="form-container">
+    <h2><i class="fa-solid fa-user-plus"></i> Register</h2>
+    <form id="registerForm">
+        <div class="input-group">
+            <i class="fa-solid fa-user"></i>
+            <input type="text" id="name" placeholder="Full Name" required>
+        </div>
+        <div class="input-group">
+            <i class="fa-solid fa-envelope"></i>
+            <input type="email" id="email" placeholder="Email" required>
+        </div>
+        <div class="input-group">
+            <i class="fa-solid fa-lock"></i>
+            <input type="password" id="password" placeholder="Password" required>
+        </div>
+
+        <!-- 🔹 Role Selection -->
+        <div class="input-group">
+            <i class="fa-solid fa-user-tag"></i>
+            <select id="role" required>
+                <option value="">-- Select Role --</option>
+                <option value="STUDENT">Student</option>
+                <option value="ORGANIZATION">Organization</option>
+            </select>
+        </div>
+
+        <button type="submit" class="cta-btn">Register</button>
+    </form>
+    <p>Already have an account? <a href="login.html">Login</a></p>
+</div>
+<script src="../js/auth.js"></script>
+</body>
+</html>

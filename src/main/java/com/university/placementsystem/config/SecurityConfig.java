@@ -56,6 +56,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/student/**").hasRole("STUDENT")           // only STUDENT role
                         .requestMatchers("/api/organization/**").hasRole("ORGANIZATION") // only ORGANIZATION role
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")               // only ADMIN role
+                        .requestMatchers("index.html", "/pages/*","/css/*", "/js/*").permitAll() // static resources
                         .anyRequest().authenticated()                                   // all other endpoints need login
                 )
 

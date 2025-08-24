@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organization Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body onload="checkAccess('ORGANIZATION')">
+<nav class="navbar">
+    <div class="logo">🏢 Organization Dashboard</div>
+    <ul class="nav-links">
+        <li><a href="../index.html">Home</a></li>
+        <li><a href="org.html">My Profile</a></li>
+        <li><a href="org.html#jobs">My Jobs</a></li>
+        <li><a href="#" onclick="logout()">Logout</a></li>
+    </ul>
+</nav>
+
+<section class="dashboard">
+    <h2>🏢 Company Profile</h2>
+    <div id="org-profile"></div>
+
+    <h2>📝 Post New Job</h2>
+    <form id="jobForm">
+        <input type="text" id="title" placeholder="Job Title" required>
+        <textarea id="description" placeholder="Job Description" required></textarea>
+        <button type="submit" class="cta-btn">Post Job</button>
+    </form>
+
+    <h2 id="jobs">📋 My Jobs</h2>
+    <div id="org-jobs"></div>
+</section>
+<script src="../js/auth.js"></script>
+</body>
+</html>

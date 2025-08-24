@@ -1,0 +1,65 @@
+/* Base */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Poppins', sans-serif;
+    background: #f9fafc;
+    color: #333;
+}
+
+/* Navbar */
+.navbar {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #004080; padding: 15px 30px; color: #fff;
+}
+.navbar .logo { font-size: 22px; font-weight: 600; }
+.navbar .nav-links { list-style: none; display: flex; gap: 20px; }
+.navbar .nav-links a {
+    text-decoration: none; color: #fff; font-weight: 500; transition: color 0.3s;
+}
+.navbar .nav-links a:hover { color: #ffcc00; }
+
+/* Hero */
+.hero {
+    height: 75vh; background: linear-gradient(to right, #004080, #0066cc);
+    display: flex; justify-content: center; align-items: center;
+    text-align: center; color: #fff; padding: 0 20px;
+}
+.hero h1 { font-size: 3rem; margin-bottom: 20px; }
+.hero .highlight { color: #ffcc00; }
+.hero p { font-size: 1.2rem; margin-bottom: 25px; }
+.cta-btn {
+    padding: 12px 30px; background: #ffcc00; color: #004080;
+    text-decoration: none; border-radius: 8px; font-weight: bold;
+    transition: 0.3s;
+}
+.cta-btn:hover { background: #e6b800; transform: translateY(-2px); }
+
+/* Features */
+.features { display: flex; gap: 30px; padding: 60px 20px; background: #fff; }
+.feature-card {
+    background: #f4f6f9; border-radius: 12px; padding: 30px; text-align: center; flex: 1;
+    transition: 0.3s;
+}
+.feature-card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+.feature-card h3 { margin: 15px 0; color: #004080; }
+
+/* Forms */
+.form-container {
+    max-width: 400px; margin: 80px auto; padding: 30px;
+    background: #fff; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+.form-container h2 { margin-bottom: 20px; text-align: center; color: #004080; }
+.input-group { display: flex; align-items: center; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 6px; padding: 10px; }
+.input-group i { margin-right: 10px; color: #004080; }
+.input-group input, .input-group textarea { border: none; outline: none; flex: 1; }
+
+/* Dashboard */
+.dashboard { padding: 40px; }
+.job-card {
+    background: #fff; border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-bottom: 15px;
+    transition: 0.3s;
+}
+.job-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+
+/* Footer */
+footer { background: #004080; color: #fff; text-align: center; padding: 15px; font-size: 14px; margin-top: 30px; }
